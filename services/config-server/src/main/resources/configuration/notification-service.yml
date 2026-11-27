@@ -1,0 +1,52 @@
+server:
+  port: 8040
+
+
+spring:
+  mongodb:
+    uri: mongodb://suhail:123456@localhost:27017/notification?authSource=admin
+  data:
+    mongodb:
+      uri: mongodb://suhail:123456@localhost:27017/notification?authSource=admin
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.type.mapping: paymentConfirmation:org.sla.ecommerce.kafka.payment.PaymentConfirmation,orderConfirmation:org.sla.ecommerce.kafka.order.OrderConfirmation
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+          connectiontimeout: 10000
+          timeout: 15000
+          writetimeout: 15000
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    zipkin:
+      endpoint: http://localhost:9411/api/v2/spans
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans

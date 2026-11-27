@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 24px; color: #1f2937; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        h1 { color: #0f766e; margin-top: 0; }
+        .summary { background: #f0fdfa; border-left: 4px solid #0f766e; padding: 16px; margin: 20px 0; }
+        .footer { font-size: 12px; color: #6b7280; margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Payment Confirmation</h1>
+    <p>Dear <strong th:text="${customerName}">Customer</strong>,</p>
+    <p>Your payment has been successfully processed. Here are your transaction details:</p>
+    <div class="summary">
+        <p><strong>Order Reference:</strong> <span th:text="${orderReference}">ORD-000</span></p>
+        <p><strong>Amount Paid:</strong> $<span th:text="${amount}">0.00</span></p>
+    </div>
+    <p>Thank you for shopping with us!</p>
+    <div class="footer">
+        &copy; 2026 SLA E-Commerce Platform. This is an automated receipt.
+    </div>
+</div>
+</body>
+</html>
