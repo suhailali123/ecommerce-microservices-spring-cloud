@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [config-server, customer, discovery, gateway, notification, order, payment, product]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Build ${{ matrix.service }}
+        run: mvn -B -ntp -f services/${{ matrix.service }}/pom.xml package -DskipTests
