@@ -1,4 +1,4 @@
-# E-commerce Microservices
+# E-commerce Microservices (Spring Cloud)
 
 Event-driven Spring Boot and Spring Cloud microservices for placing orders, processing
 payments and sending notifications, with centralized configuration, service discovery,
@@ -7,21 +7,21 @@ distributed tracing and a local Docker infrastructure.
 ## Architecture
 
 ```
-Client → API Gateway (:8222) → Order Service ──Kafka (:9092)──► Notification Service (:8040)
-              │                     │                              ├─► MailDev (:1080 UI / :1025 SMTP)
-              │                     └─ OpenFeign ─► Customer /     └─► MongoDB (:27017, db: notification)
-              │                                     Product / Payment ─► PostgreSQL (:5432)
+Client → API Gateway (:8222) → Order Service (:8070) ──Kafka (:9092)──► Notification Service (:8040)
+                                   │                                         ▲   ├─► MailDev (:1080 UI / :1025 SMTP)
+                                   ├─► Customer Service (:8090)              │   └─► MongoDB (:27017, db: notification)
+                                   ├─► Product Service (:8050)               │
+                                   └─► Payment Service (:8060) ──Kafka───────┘
+
    Eureka Discovery (:8761) · Config Server (:8888) · Keycloak (:9098) · Zipkin (:9411)
 ```
 
-![Architecture](docs/architecture.png)
-
 ## Tech stack
-- **Runtime:** Java 17, Spring Boot <version from pom.xml>, Spring Cloud (Config, Eureka, LoadBalancer, OpenFeign)
+- **Runtime:** Java 17, Spring Boot 4.1.2, Spring Cloud (Config, Eureka, Gateway, LoadBalancer)
 - **Messaging:** Apache Kafka 7.5 (Confluent) with Zookeeper
-- **Databases:** PostgreSQL 16 (domain services), MongoDB 7.0 (notifications)
-- **Observability and email:** Micrometer Tracing (Brave) + Zipkin, MailDev
-- **Security:** Keycloak 24.0.1 (OAuth 2.0 / OpenID Connect)
+- **Databases:** PostgreSQL 16, MongoDB 7.0 (notifications); Flyway migrations in the product service
+- **Observability and email:** Micrometer Tracing (Brave) + Zipkin, MailDev with HTML email templates
+- **Identity:** Keycloak 24.0.1, provisioned in the Docker stack
 - **Tooling and containers:** Docker Compose, pgAdmin, Mongo Express
 
 ## Services (Spring Boot, run locally)
@@ -30,12 +30,12 @@ Client → API Gateway (:8222) → Order Service ──Kafka (:9092)──► No
 |---|---|---|
 | config-server | 8888 | Serves externalized YAML configuration to the microservices |
 | discovery | 8761 | Eureka service registry and instance health tracking |
-| gateway | 8222 | Entry-point routing and token validation |
-| customer-service | <port> | Customer data |
-| product-service | <port> | Product catalog and stock |
-| order-service | <port> | Creates orders (`POST /api/v1/orders`) and publishes order and payment events |
-| payment-service | <port> | Payment processing and payment events |
-| notification-service | 8040 | Consumes `order-topic` and `payment-topic`, stores notifications in MongoDB, sends emails via MailDev |
+| gateway | 8222 | Entry-point routing |
+| customer | 8090 | Customer data and addresses |
+| product | 8050 | Product catalog, categories and stock (Flyway migrations) |
+| payment | 8060 | Payment processing; publishes payment events to `payment-topic` |
+| order | 8070 | Creates orders (`POST /api/v1/orders`), calls customer, product and payment, publishes order events to `order-topic` |
+| notification | 8040 | Consumes `order-topic` and `payment-topic`, stores notifications in MongoDB, sends emails via MailDev |
 
 ## Infrastructure (Docker Compose)
 
@@ -56,13 +56,13 @@ Client → API Gateway (:8222) → Order Service ──Kafka (:9092)──► No
 **Prerequisites:** JDK 17, Maven, Docker and Docker Compose
 
 ```bash
-git clone https://github.com/suhailali123/e-commerce-app.git
-cd e-commerce-app/services
+git clone https://github.com/suhailali123/ecommerce-microservices-spring-cloud.git
+cd ecommerce-microservices-spring-cloud
 docker compose up -d
 docker compose ps        # all containers should be Up / healthy
 ```
 
-Start the Spring services in this order: config-server → discovery → gateway → customer, product, payment, order → notification-service.
+Start the Spring services in this order: config-server → discovery → gateway → customer, product, payment, order → notification.
 
 | UI | URL |
 |---|---|
@@ -73,50 +73,45 @@ Start the Spring services in this order: config-server → discovery → gateway
 | Mongo Express | http://localhost:8081 |
 | pgAdmin | http://localhost:5050 |
 
-Notes:
-- **MongoDB:** authenticated access (`authSource=admin`); credentials are served through Config Server.
-- **Keycloak:** import `<realm-file>.json`, and use the test user `<username>` (local development only).
-- Credentials in this project are for local development only. Change them for any shared environment.
+Credentials in this project are for local development only. Change them for any shared environment.
 
 ## Try it
 
-1. Get a token (the password grant is used here for local testing only):
-   ```bash
-   curl -X POST "http://localhost:9098/realms/<realm>/protocol/openid-connect/token" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "grant_type=password&client_id=<client-id>&username=<username>&password=<password>"
-   ```
-2. Place an order through the gateway:
+1. Create a customer through the gateway and note the ID in the response.
+2. Place an order (product 152 is seeded by the Flyway migration):
    ```bash
    curl -X POST "http://localhost:8222/api/v1/orders" \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer <token>" \
      -d '{
        "orderReference": "ORD-20261122-106",
        "amount": 149.99,
        "paymentMethod": "CREDIT_CARD",
-       "customerId": "<customer-id>",
+       "customerId": "YOUR_CUSTOMER_ID",
        "products": [{ "productId": 152, "quantity": 1 }]
      }'
    ```
 3. Verify the result:
-   - notification-service logs show `order-topic` and `payment-topic` consumption
+   - notification service logs show `order-topic` and `payment-topic` consumption
    - Mongo Express (`notification` database) shows the saved notification records
    - MailDev shows the Order Confirmation and Payment Confirmation emails
 4. Open Zipkin, select a service, set the lookback window and click **Run Query** to inspect the trace.
 
 ## What I changed and fixed
-- **Upgrade:** <old version> → Spring Boot <new version> on Java 17, with Spring Cloud Config and Eureka integration.
+- **Stack:** built on Java 17 and Spring Boot 4.1.2 with Spring Cloud Config and Eureka.
 - **MongoDB authentication (error 13, `credential=null`):** bound the credentials through Config Server with `authSource=admin`, so inserts are authenticated.
 - **MailDev SMTP timeouts:** raised connection, read and write timeouts so concurrent order and payment emails no longer fail.
 - **Zipkin span export:** added `spring-boot-starter-zipkin` and configured sampling and the endpoint (`http://localhost:9411/api/v2/spans`) so spans appear in Zipkin.
 
+These changes were made before the first commit, so the Git history starts after them.
+
 ## Known limitations
+- Keycloak runs in the Docker stack, but the gateway does not yet validate tokens.
 - Trace context is not yet propagated across every HTTP client and Kafka producer/consumer.
-- <State honestly whether the gateway enforces Keycloak tokens on all routes.>
+- Tests are limited to context-load checks so far.
 
 ## Roadmap
-- Transactional outbox pattern for reliable order event publishing
+- JWT validation on the gateway with Keycloak
+- Transactional outbox pattern for reliable event publishing
 - Unit and integration tests (JUnit 5, Mockito, Testcontainers)
 - React front end for order placement
 
