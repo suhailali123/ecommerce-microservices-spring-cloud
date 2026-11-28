@@ -1,0 +1,48 @@
+{
+  "realm": "ecommerce",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Can browse products and place orders" },
+      { "name": "admin", "description": "Can also manage products" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ecommerce-client",
+      "name": "E-commerce client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:*"],
+      "webOrigins": ["+"]
+    }
+  ],
+  "users": [
+    {
+      "username": "testuser",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "testuser@sla-ecommerce.org",
+      "credentials": [{ "type": "password", "value": "Test@12345", "temporary": false }],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "adminuser",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "adminuser@sla-ecommerce.org",
+      "credentials": [{ "type": "password", "value": "Admin@12345", "temporary": false }],
+      "realmRoles": ["user", "admin"]
+    }
+  ]
+}
