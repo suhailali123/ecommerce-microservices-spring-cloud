@@ -4,6 +4,11 @@ server:
 spring:
   mongodb:
     uri: mongodb://suhail:123456@localhost:27017/customer?authSource=admin
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9098/realms/ecommerce
 
 eureka:
   instance:
